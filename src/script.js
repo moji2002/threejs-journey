@@ -2,36 +2,35 @@ import "./style.css";
 import * as THREE from "three";
 import Stats from "stats.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-// import gsap from "gsap";
+import toggleFullscreen from "./helpers/toggleFullscreen";
+import GUI from "lil-gui";
+
+const gui = new GUI();
+gui.close();
 
 const canvas = document.querySelector("#webgl");
-const SIZES = {
-  width: window.innerWidth,
-  height: window.innerHeight,
-};
-
 const scene = new THREE.Scene();
 
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({ color: "rgb(255, 111, 0)" });
-const mesh = new THREE.Mesh(geometry, material);
-// mesh.position.set(0.5, 1, 0.1);
+const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
-const ASPECT_RATIO = SIZES.width / SIZES.height;
+const material = new THREE.MeshBasicMaterial({
+  color: "rgb(255, 111, 0)",
+  wireframe: true,
+});
+const mesh = new THREE.Mesh(boxGeometry, material);
+
 const FIELD_OF_VIEW = 75; //degrees
-const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, ASPECT_RATIO);
+const camera = new THREE.PerspectiveCamera(
+  FIELD_OF_VIEW,
+  window.innerWidth / window.innerHeight
+);
 
 camera.position.z = 3;
 
 const control = new OrbitControls(camera, canvas);
 control.enableDamping = true;
-// camera.lookAt(mesh.position);
 
-const objects = [
-  camera,
-  mesh,
-  // new THREE.AxesHelper()
-];
+const objects = [camera, mesh];
 
 for (const object of objects) {
   scene.add(object);
@@ -39,27 +38,36 @@ for (const object of objects) {
 
 const renderer = new THREE.WebGLRenderer({ canvas });
 
-renderer.setSize(SIZES.width, SIZES.height);
+const update = () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+  renderer.render(scene, camera);
+};
+
+update();
+
+window.addEventListener("dblclick", () => toggleFullscreen(canvas));
+window.addEventListener("resize", update);
+canvas.addEventListener("click", () => gui.close());
 
 const stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
 document.body.appendChild(stats.dom);
 
+gui.addColor(mesh.material, "color");
+gui.add(mesh.material, "wireframe");
+const position = gui.addFolder("position");
+position.add(camera.position, "x", -5, 5);
+position.add(camera.position, "y", -5, 5);
+position.add(camera.position, "z", -5, 5);
+const scale = gui.addFolder("scale");
+scale.add(mesh.scale, "x", 0, 5);
+scale.add(mesh.scale, "y", 0, 5);
+scale.add(mesh.scale, "z", 0, 5);
+
 let time = Date.now();
-
-// gsap.to(mesh.position, { x: 2, yoyo: true, repeat: -1 });
-
-const cursor = {
-  x: 0,
-  y: 0,
-};
-
-// window.addEventListener("mousemove", (e) => {
-//   // console.lo(cursor);
-
-//   cursor.x = e.clientX / window.innerWidth - 0.5;
-//   cursor.y = e.clientY / window.innerHeight - 0.5;
-// });
 
 const tick = () => {
   // calculate delta time
@@ -67,14 +75,10 @@ const tick = () => {
   const deltaTime = currentTime - time;
   time = currentTime;
 
-  // camera.position.x = cursor.x
-  // camera.position.y = -cursor.y
-
-  // mesh.rotation.y += 0.002 * deltaTime;
   stats.update();
   control.update();
   renderer.render(scene, camera);
-  // requestAnimationFrame(tick);
+  requestAnimationFrame(tick);
 };
 
 tick();
