@@ -1,84 +1,77 @@
 import "./style.css";
 import * as THREE from "three";
-import Stats from "stats.js";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import toggleFullscreen from "./helpers/toggleFullscreen";
-import GUI from "lil-gui";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import gsap from "gsap";
+import * as dat from "lil-gui";
 
-const gui = new GUI();
-gui.close();
-
-const canvas = document.querySelector("#webgl");
-const scene = new THREE.Scene();
-
-const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-
-const material = new THREE.MeshBasicMaterial({
-  color: "rgb(255, 111, 0)",
-  wireframe: true,
-});
-const mesh = new THREE.Mesh(boxGeometry, material);
-
-const FIELD_OF_VIEW = 75; //degrees
-const camera = new THREE.PerspectiveCamera(
-  FIELD_OF_VIEW,
-  window.innerWidth / window.innerHeight
-);
-
-camera.position.z = 3;
-
-const control = new OrbitControls(camera, canvas);
-control.enableDamping = true;
-
-const objects = [camera, mesh];
-
-for (const object of objects) {
-  scene.add(object);
-}
-
-const renderer = new THREE.WebGLRenderer({ canvas });
-
-const update = () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
-  renderer.render(scene, camera);
+const parameters = {
+  color: 0xff0000,
+  spin: () => {
+    gsap.to(mesh.rotation, 1, { y: mesh.rotation.y + Math.PI * 2 });
+  },
 };
 
-update();
+const canvas = document.querySelector("canvas.webgl");
 
-window.addEventListener("dblclick", () => toggleFullscreen(canvas));
-window.addEventListener("resize", update);
-canvas.addEventListener("click", () => gui.close());
+const scene = new THREE.Scene();
 
-const stats = new Stats();
-stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-document.body.appendChild(stats.dom);
+const geometry = new THREE.BoxGeometry(1, 1, 1, 3, 3, 3);
+const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
 
-gui.addColor(mesh.material, "color");
-gui.add(mesh.material, "wireframe");
-const position = gui.addFolder("position");
-position.add(camera.position, "x", -5, 5);
-position.add(camera.position, "y", -5, 5);
-position.add(camera.position, "z", -5, 5);
-const scale = gui.addFolder("scale");
-scale.add(mesh.scale, "x", 0, 5);
-scale.add(mesh.scale, "y", 0, 5);
-scale.add(mesh.scale, "z", 0, 5);
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
 
-let time = Date.now();
+window.addEventListener("resize", () => {
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+);
+camera.position.z = 3;
+scene.add(camera);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+const renderer = new THREE.WebGLRenderer({ canvas });
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+
+const gui = new dat.GUI({
+  width: 400,
+});
+
+gui.close();
+gui.add(mesh.position, "y").min(-3).max(3).step(0.01).name("elevation");
+gui.add(mesh, "visible");
+gui.add(material, "wireframe");
+
+gui.addColor(parameters, "color").onChange(() => {
+  material.color.set(parameters.color);
+});
+
+gui.add(parameters, "spin");
 
 const tick = () => {
-  // calculate delta time
-  const currentTime = Date.now();
-  const deltaTime = currentTime - time;
-  time = currentTime;
-
-  stats.update();
-  control.update();
+  controls.update();
   renderer.render(scene, camera);
-  requestAnimationFrame(tick);
+  window.requestAnimationFrame(tick);
 };
 
 tick();
